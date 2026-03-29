@@ -14,11 +14,13 @@ usage() {
 Usage:
   bash setup.sh gcp
   bash setup.sh vps-vless
+  bash setup.sh pve-tailscale
   bash setup.sh pve-xray
   bash setup.sh pve-tproxy
 
 Examples:
   bash setup.sh vps-vless
+  TAILSCALE_HOSTNAME='pve-homelab' bash setup.sh pve-tailscale
   VLESS_LINK='vless://...' bash setup.sh pve-xray
 EOF
 }
@@ -42,6 +44,9 @@ case "$ROLE" in
         ;;
     vps-vless|vps-vless-server)
         bash "$ROOT_DIR/vps_vless_setup.sh" "$@"
+        ;;
+    pve-tailscale)
+        bash "$ROOT_DIR/pve_tailscale_setup.sh" "$@"
         ;;
     pve-xray)
         run_pve_xray "$@"
