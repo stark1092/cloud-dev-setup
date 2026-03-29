@@ -1,7 +1,6 @@
 #!/bin/bash
 # ============================================
 # PVE 宿主机 xray 安装脚本
-# 协议: VLESS + TLS + TCP
 # 本地代理端口: SOCKS5 :1080 / HTTP :1081
 # 用法: bash pve_xray_setup.sh
 # ============================================
@@ -14,26 +13,124 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# ── 1. 读取 VLESS 链接 ──────────────────────────────────────────────────────
+die() {
+    echo -e "${RED}$1${NC}"
+    exit 1
+}
 
-echo -e "${BLUE}请粘贴你的 VLESS 链接（输入后回车）:${NC}"
+echo -e "${BLUE}请粘贴你的 VLESS Reality 链接（输入后回车）:${NC}"
 read -r VLESS_LINK
 
-# 格式: vless://UUID@host:port?security=tls&type=tcp...#name
-UUID=$(echo "$VLESS_LINK" | sed 's|vless://||' | cut -d'@' -f1)
-HOSTPORT=$(echo "$VLESS_LINK" | sed 's|vless://||' | cut -d'@' -f2 | cut -d'?' -f1)
-SERVER_HOST=$(echo "$HOSTPORT" | cut -d':' -f1)
-SERVER_PORT=$(echo "$HOSTPORT" | cut -d':' -f2)
+if ! command -v python3 &>/dev/null; then
+    die "未检测到 python3，无法解析 VLESS 链接"
+fi
 
-# SNI 优先从链接参数取，否则用 host
-SNI=$(echo "$VLESS_LINK" | grep -oP 'sni=\K[^&\#]+' || true)
-if [[ -z "$SNI" ]]; then
-    SNI="$SERVER_HOST"
+mapfile -t PARSED_FIELDS < <(python3 - "$VLESS_LINK" <<'PYEOF'
+import sys
+from urllib.parse import parse_qs, unquote, urlsplit
+from uuid import UUID
+
+link = sys.argv[1].strip()
+if not link:
+    raise SystemExit("未提供 VLESS 链接")
+
+parts = urlsplit(link)
+if parts.scheme.lower() != "vless":
+    raise SystemExit("链接必须以 vless:// 开头")
+
+if not parts.username:
+    raise SystemExit("VLESS 链接缺少 UUID")
+
+uuid_value = unquote(parts.username)
+try:
+    UUID(uuid_value)
+except ValueError as exc:
+    raise SystemExit("UUID 格式无效") from exc
+
+try:
+    port = parts.port
+except ValueError as exc:
+    raise SystemExit("VLESS 链接端口无效") from exc
+
+if not parts.hostname or port is None:
+    raise SystemExit("VLESS 链接缺少服务器地址或端口")
+
+query = parse_qs(parts.query, keep_blank_values=True)
+
+
+def pick(*keys, default=""):
+    for key in keys:
+        values = query.get(key)
+        if values:
+            value = values[0]
+            if value != "":
+                return unquote(value)
+    return default
+
+
+security = pick("security").lower()
+network = pick("type", "network", default="tcp").lower()
+sni = pick("sni", "serverName")
+public_key = pick("pbk", "publicKey")
+short_id = pick("sid", "shortId")
+fingerprint = pick("fp", "fingerprint", "client-fingerprint", default="chrome").lower()
+flow = pick("flow", default="xtls-rprx-vision").lower()
+
+if security != "reality":
+    raise SystemExit(f"当前脚本仅支持 security=reality，实际为 {security or '空'}")
+
+if network != "tcp":
+    raise SystemExit(f"当前脚本仅支持 type=tcp，实际为 {network or '空'}")
+
+if not sni:
+    raise SystemExit("VLESS 链接缺少 sni/serverName")
+
+if not public_key:
+    raise SystemExit("VLESS 链接缺少 pbk/publicKey")
+
+if flow != "xtls-rprx-vision":
+    raise SystemExit(f"当前脚本仅支持 flow=xtls-rprx-vision，实际为 {flow or '空'}")
+
+for field in (
+    uuid_value,
+    parts.hostname,
+    str(port),
+    sni,
+    public_key,
+    short_id,
+    fingerprint,
+    flow,
+):
+    print(field)
+PYEOF
+) || die "解析 VLESS Reality 链接失败，请检查链接是否完整"
+
+if [[ ${#PARSED_FIELDS[@]} -ne 8 ]]; then
+    die "解析结果字段数量异常，请检查分享链接格式"
+fi
+
+UUID="${PARSED_FIELDS[0]}"
+SERVER_HOST="${PARSED_FIELDS[1]}"
+SERVER_PORT="${PARSED_FIELDS[2]}"
+SNI="${PARSED_FIELDS[3]}"
+PUBLIC_KEY="${PARSED_FIELDS[4]}"
+SHORT_ID="${PARSED_FIELDS[5]}"
+FINGERPRINT="${PARSED_FIELDS[6]}"
+FLOW="${PARSED_FIELDS[7]}"
+
+if [[ -z "$SHORT_ID" ]]; then
+    SHORT_ID_DISPLAY="(empty)"
+else
+    SHORT_ID_DISPLAY="$SHORT_ID"
 fi
 
 echo -e "${GREEN}解析结果:${NC}"
 echo "  服务器: $SERVER_HOST:$SERVER_PORT"
 echo "  SNI:    $SNI"
+echo "  指纹:   $FINGERPRINT"
+echo "  Flow:   $FLOW"
+echo "  公钥:   ${PUBLIC_KEY:0:12}******"
+echo "  ShortID:${SHORT_ID_DISPLAY}"
 echo "  UUID:   ${UUID:0:8}******"
 echo ""
 
@@ -98,7 +195,8 @@ cat > /etc/xray/config.json <<EOF
             "users": [
               {
                 "id": "$UUID",
-                "encryption": "none"
+                "encryption": "none",
+                "flow": "$FLOW"
               }
             ]
           }
@@ -106,9 +204,12 @@ cat > /etc/xray/config.json <<EOF
       },
       "streamSettings": {
         "network": "tcp",
-        "security": "tls",
-        "tlsSettings": {
-          "serverName": "$SNI"
+        "security": "reality",
+        "realitySettings": {
+          "fingerprint": "$FINGERPRINT",
+          "serverName": "$SNI",
+          "publicKey": "$PUBLIC_KEY",
+          "shortId": "$SHORT_ID"
         }
       }
     },
@@ -186,9 +287,9 @@ echo ""
 echo -e "${BLUE}=============================${NC}"
 echo -e "${GREEN}安装完成！${NC}"
 echo ""
-echo "代理端口:"
-echo "  SOCKS5: 127.0.0.1:1080"
-echo "  HTTP:   127.0.0.1:1081"
+echo "监听端口:"
+echo "  SOCKS5: 0.0.0.0:1080 (宿主机本地可用 127.0.0.1:1080)"
+echo "  HTTP:   0.0.0.0:1081 (宿主机本地可用 127.0.0.1:1081)"
 echo ""
 echo "LXC 容器内使用（替换 <PVE_HOST_IP> 为宿主机 IP）:"
 echo "  export http_proxy=http://<PVE_HOST_IP>:1081"
@@ -198,4 +299,6 @@ echo "服务管理:"
 echo "  systemctl status xray"
 echo "  systemctl restart xray"
 echo "  journalctl -u xray -f"
+echo ""
+echo "如果脚本拒绝你的分享链接，请参考 PVE-VLESS.md 检查 pbk/sni/flow 等字段"
 echo -e "${BLUE}=============================${NC}"

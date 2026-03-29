@@ -8,9 +8,10 @@
 VPS-ENV/
 ├── gcp_provision.sh      # GCP Ubuntu 工作站一键配置（tmux/zsh/docker/mise 等）
 ├── proxy_toggle.sh       # 代理切换工具（source 后使用 proxy on/off/status）
-├── pve_xray_setup.sh     # PVE 宿主机：安装 xray + 配置 VLESS 基础代理
+├── pve_xray_setup.sh     # PVE 宿主机：接入 VLESS Reality 节点，生成 xray 客户端配置
 ├── pve_tproxy_setup.sh   # PVE 宿主机：升级为透明代理（tproxy + DNS 防泄漏）
 ├── PVE.md                # PVE 家庭实验室完整配置记录
+├── PVE-VLESS.md          # VLESS Reality 节点接入与排障指南
 ├── COMMANDS.md           # 常用命令速查
 └── TOOLS.md              # 工具使用教程
 ```
@@ -24,7 +25,7 @@ VPS-ENV/
 
 ## PVE 脚本执行顺序
 
-1. `pve_xray_setup.sh` — 初始化 xray 和 VLESS 配置
+1. `pve_xray_setup.sh` — 初始化 xray 和 VLESS Reality 客户端配置
    - ⚠️ xray 需在 Mac 上下载后 scp 到 PVE（GitHub 在大陆无法直连）
 2. `pve_tproxy_setup.sh` — 升级为全流量透明代理
 

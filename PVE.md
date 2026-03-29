@@ -26,6 +26,19 @@ apt update && apt dist-upgrade -y
 
 ---
 
+## 脚本执行顺序
+
+1. `pve_xray_setup.sh`
+   - 粘贴完整的 VLESS Reality 分享链接
+   - 生成 `/etc/xray/config.json`
+   - 监听 `0.0.0.0:1080/1081`（宿主机本地可直接用 `127.0.0.1`，LXC 可用宿主机 IP 复用）
+2. `pve_tproxy_setup.sh`
+   - 在现有 xray 配置上追加 tproxy 入站
+   - 写入 iptables / policy routing / DNS 防泄漏规则
+3. 字段说明、节点要求、排障建议见 [`PVE-VLESS.md`](./PVE-VLESS.md)
+
+---
+
 ## 网络架构
 
 ```
@@ -83,14 +96,17 @@ apt update && apt upgrade -y
 
 所有出站流量自动走代理，无需显式指定 `--proxy`。DNS 也通过代理解析，防止泄漏。
 
+如果你手头只有服务商 / 面板生成的 VLESS 分享链接，先看 [`PVE-VLESS.md`](./PVE-VLESS.md)。
+本仓库当前约定的客户端参数为：`security=reality` + `type=tcp` + `flow=xtls-rprx-vision`。
+
 **协议参数：**
 - 传输：TCP + TLS Reality
 - Flow：xtls-rprx-vision
 - SNI：www.microsoft.com / Fingerprint：chrome
 
-**本地端口（备用手动代理）：**
-- SOCKS5：127.0.0.1:1080
-- HTTP：127.0.0.1:1081
+**默认监听端口：**
+- SOCKS5：0.0.0.0:1080（宿主机本地可用 `127.0.0.1:1080`）
+- HTTP：0.0.0.0:1081（宿主机本地可用 `127.0.0.1:1081`）
 - tproxy（透明）：127.0.0.1:12345
 
 **白名单（直连，不走代理）：**
@@ -109,4 +125,7 @@ journalctl -u xray -f
 systemctl restart xray-iptables
 ```
 
-**安装脚本：** `pve_tproxy_setup.sh`（在 PVE 宿主机以 root 执行）
+**相关文档与脚本：**
+- [`PVE-VLESS.md`](./PVE-VLESS.md)：节点要求、分享链接字段、PVE 接入步骤、排障建议
+- `pve_xray_setup.sh`：生成基础 xray Reality 客户端配置
+- `pve_tproxy_setup.sh`：升级为透明代理（在 PVE 宿主机以 root 执行）
