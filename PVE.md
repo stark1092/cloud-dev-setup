@@ -28,6 +28,8 @@ apt update && apt dist-upgrade -y
 
 ## 脚本执行顺序
 
+如果你还没有可用的 VLESS Reality 服务端节点，先看 [`VPS-VLESS.md`](./VPS-VLESS.md)。
+
 1. `pve_xray_setup.sh`
    - 粘贴完整的 VLESS Reality 分享链接
    - 生成 `/etc/xray/config.json`
@@ -97,6 +99,7 @@ apt update && apt upgrade -y
 所有出站流量自动走代理，无需显式指定 `--proxy`。DNS 也通过代理解析，防止泄漏。
 
 如果你手头只有服务商 / 面板生成的 VLESS 分享链接，先看 [`PVE-VLESS.md`](./PVE-VLESS.md)。
+如果你还没有把服务端节点建出来，先看 [`VPS-VLESS.md`](./VPS-VLESS.md)。
 本仓库当前约定的客户端参数为：`security=reality` + `type=tcp` + `flow=xtls-rprx-vision`。
 
 **协议参数：**

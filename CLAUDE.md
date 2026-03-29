@@ -1,6 +1,6 @@
 # VPS-ENV
 
-服务器和虚拟化环境配置脚本集合，涵盖 GCP 工作站和 PVE 家庭实验室。
+服务器和虚拟化环境配置脚本集合，涵盖 GCP 工作站、VPS 代理节点与 PVE 家庭实验室。
 
 ## 目录结构
 
@@ -8,6 +8,7 @@
 VPS-ENV/
 ├── gcp_provision.sh      # GCP Ubuntu 工作站一键配置（tmux/zsh/docker/mise 等）
 ├── proxy_toggle.sh       # 代理切换工具（source 后使用 proxy on/off/status）
+├── VPS-VLESS.md          # 新 VPS 部署 VLESS Reality 服务端指南
 ├── pve_xray_setup.sh     # PVE 宿主机：接入 VLESS Reality 节点，生成 xray 客户端配置
 ├── pve_tproxy_setup.sh   # PVE 宿主机：升级为透明代理（tproxy + DNS 防泄漏）
 ├── PVE.md                # PVE 家庭实验室完整配置记录

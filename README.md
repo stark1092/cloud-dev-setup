@@ -1,6 +1,6 @@
 # VPS-ENV
 
-服务器和虚拟化环境配置脚本集合，涵盖 GCP Ubuntu 工作站初始化、PVE 家庭实验室代理接入，以及常用运维文档。
+服务器和虚拟化环境配置脚本集合，涵盖 GCP Ubuntu 工作站初始化、VPS 代理节点部署、PVE 家庭实验室代理接入，以及常用运维文档。
 
 ## 目录结构
 
@@ -8,6 +8,7 @@
 VPS-ENV/
 ├── gcp_provision.sh     # GCP Ubuntu 工作站一键配置（tmux/zsh/docker/mise 等）
 ├── proxy_toggle.sh      # 代理切换工具（source 后使用 proxy on/off/status）
+├── VPS-VLESS.md         # 新 VPS 部署 VLESS Reality 服务端指南
 ├── pve_xray_setup.sh    # PVE 宿主机：接入 VLESS Reality 节点，生成 xray 客户端配置
 ├── pve_tproxy_setup.sh  # PVE 宿主机：升级为透明代理（tproxy + DNS 防泄漏）
 ├── PVE.md               # PVE 家庭实验室完整配置记录
@@ -22,6 +23,7 @@ VPS-ENV/
 | 场景 | 入口 | 说明 |
 |------|------|------|
 | GCP 开发工作站 | `gcp_provision.sh` | Ubuntu 24.04 一键配置 tmux / zsh / Docker / mise 等环境 |
+| VPS 节点服务端部署 | `VPS-VLESS.md` | 在新 VPS 上部署 VLESS Reality 服务端节点 |
 | PVE 基础代理接入 | `pve_xray_setup.sh` | 读取 VLESS Reality 分享链接，生成 `/etc/xray/config.json` |
 | PVE 透明代理 | `pve_tproxy_setup.sh` | 为 PVE 宿主机与 LXC 流量启用 tproxy + DNS 防泄漏 |
 | PVE 实操记录 | `PVE.md` | 记录网络拓扑、LXC 约定、服务管理方法 |
@@ -62,7 +64,7 @@ GCP 脚本会安装以下常用组件：
 ### PVE 宿主机接入 VLESS Reality 节点
 
 ```bash
-# 1. 在远端服务端准备一个可用的 VLESS Reality 节点
+# 1. 在新 VPS 上部署一个可用的 VLESS Reality 服务端（见 VPS-VLESS.md）
 # 2. 在 PVE 宿主机安装 xray 二进制（见 PVE-VLESS.md）
 
 # 3. 生成基础 xray 客户端配置
@@ -74,6 +76,7 @@ bash pve_tproxy_setup.sh
 
 ## 文档索引
 
+- [VPS-VLESS.md](./VPS-VLESS.md)：新 VPS 上部署 VLESS Reality 服务端节点
 - [PVE.md](./PVE.md)：PVE 家庭实验室的硬件、网络与服务布局说明
 - [PVE-VLESS.md](./PVE-VLESS.md)：VLESS Reality 节点要求、接入步骤与排障建议
 - [COMMANDS.md](./COMMANDS.md)：常用命令速查
