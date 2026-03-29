@@ -2,9 +2,12 @@
 
 This repository is intended to be executable by an AI coding agent after cloning onto a fresh server.
 
-## How OpenCode should start
+This is the **canonical agent operations document** for both OpenCode and Claude Code.
+If `AGENTS.md` and `CLAUDE.md` ever differ, follow `AGENTS.md`.
 
-Use this file as the primary entry document.
+## How agents should start
+
+Use this file as the primary entry document regardless of which agent frontend you use.
 
 Recommended interaction model:
 
@@ -13,6 +16,8 @@ Recommended interaction model:
 3. Use `setup.sh` only as a convenience dispatcher after the role is already clear
 
 So `setup.sh` is **optional helper tooling**, not the only valid entrypoint.
+
+`CLAUDE.md` should remain a thin compatibility shim that points back here, rather than a second full instruction set.
 
 ## Optional command dispatcher
 

@@ -6,7 +6,8 @@
 
 ```
 VPS-ENV/
-├── AGENTS.md             # OpenCode / agent 执行入口与约束说明
+├── AGENTS.md             # Canonical agent entry for OpenCode / Claude Code
+├── CLAUDE.md             # Claude Code compatibility shim (points back to AGENTS.md)
 ├── setup.sh              # 统一入口：按场景分发到对应安装脚本
 ├── gcp_provision.sh     # GCP Ubuntu 工作站一键配置（tmux/zsh/docker/mise 等）
 ├── proxy_toggle.sh      # 代理切换工具（source 后使用 proxy on/off/status）
@@ -35,7 +36,19 @@ VPS-ENV/
 
 ## 快速开始
 
-### OpenCode / 交互式入口
+### Agent 文档分层
+
+- `README.md`：给人类看的仓库总览
+- `AGENTS.md`：给 OpenCode / Claude Code 共用的**唯一 canonical agent 入口**
+- `CLAUDE.md`：仅保留 Claude Code 兼容发现能力的薄封装，避免与 `AGENTS.md` 双份维护
+
+所以对于同时使用 Claude Code 和 OpenCode 的用户，推荐结构不是维护两份完整 agent 手册，而是：
+
+- 把真实规范收敛到 `AGENTS.md`
+- 保留 `CLAUDE.md`，但只做跳转和极少量 Claude 特定说明
+- 让角色文档（`VPS-VLESS.md`、`PVE-VLESS.md`、`PVE.md`）继续承载场景知识
+
+### Claude Code / OpenCode 交互式入口
 
 如果你的目标是：
 
@@ -45,11 +58,11 @@ VPS-ENV/
 
 推荐流程不是“让 agent 自动判断机器角色”，而是：
 
-1. 先让 OpenCode 读 [`AGENTS.md`](./AGENTS.md)
+1. 先让 agent 读 [`AGENTS.md`](./AGENTS.md)
 2. 你明确告诉它这台机器的角色（GCP / VPS VLESS / PVE xray / PVE tproxy）
 3. 再由它决定直接调用底层脚本，或使用 `setup.sh` 这个便捷分发器
 
-也就是说，`AGENTS.md` 是 **OpenCode 的主入口说明**，`setup.sh` 是 **可选命令助手**。
+也就是说，`AGENTS.md` 是 **Claude Code / OpenCode 共用的主入口说明**，`setup.sh` 是 **可选命令助手**。
 
 当角色已经明确时，可以用 `setup.sh` 快速执行：
 
@@ -73,7 +86,7 @@ bash setup.sh gcp
 - 敏感值可以由脚本自动生成或通过环境变量注入
 - 最终状态会落成真实系统配置，而不是停留在“待你手工套模板”
 
-如果你是通过 OpenCode 交互式推进，优先让它先读 [`AGENTS.md`](./AGENTS.md)。
+如果你是通过 Claude Code 或 OpenCode 交互式推进，优先让它先读 [`AGENTS.md`](./AGENTS.md)。
 
 ### GCP Ubuntu 工作站
 
@@ -126,6 +139,7 @@ bash setup.sh pve-tproxy
 - [VPS-VLESS.md](./VPS-VLESS.md)：新 VPS 上部署 VLESS Reality 服务端节点
 - [vps_vless_setup.sh](./vps_vless_setup.sh)：新 VPS 上的可执行安装脚本
 - [AGENTS.md](./AGENTS.md)：OpenCode / agent 执行入口与约束说明
+- [CLAUDE.md](./CLAUDE.md)：Claude Code 兼容 shim，真实规范仍以 AGENTS.md 为准
 - [PVE.md](./PVE.md)：PVE 家庭实验室的硬件、网络与服务布局说明
 - [PVE-VLESS.md](./PVE-VLESS.md)：VLESS Reality 节点要求、接入步骤与排障建议
 - [COMMANDS.md](./COMMANDS.md)：常用命令速查
