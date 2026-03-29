@@ -13,13 +13,28 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat <<'EOF'
+Usage:
+  bash pve_xray_setup.sh
+  VLESS_LINK='vless://...' bash pve_xray_setup.sh
+
+If VLESS_LINK is not provided, the script will prompt for it.
+EOF
+    exit 0
+fi
+
 die() {
     echo -e "${RED}$1${NC}"
     exit 1
 }
 
-echo -e "${BLUE}请粘贴你的 VLESS Reality 链接（输入后回车）:${NC}"
-read -r VLESS_LINK
+if [[ -n "${VLESS_LINK:-}" ]]; then
+    echo -e "${BLUE}检测到环境变量 VLESS_LINK，直接使用${NC}"
+else
+    echo -e "${BLUE}请粘贴你的 VLESS Reality 链接（输入后回车）:${NC}"
+    read -r VLESS_LINK
+fi
 
 if ! command -v python3 &>/dev/null; then
     die "未检测到 python3，无法解析 VLESS 链接"

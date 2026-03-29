@@ -6,9 +6,12 @@
 
 ```
 VPS-ENV/
+├── AGENTS.md             # OpenCode / agent 执行入口与约束说明
+├── setup.sh              # 统一入口：按场景分发到对应安装脚本
 ├── gcp_provision.sh     # GCP Ubuntu 工作站一键配置（tmux/zsh/docker/mise 等）
 ├── proxy_toggle.sh      # 代理切换工具（source 后使用 proxy on/off/status）
 ├── VPS-VLESS.md         # 新 VPS 部署 VLESS Reality 服务端指南
+├── vps_vless_setup.sh   # 新 VPS：自动安装 VLESS Reality 服务端并输出分享链接
 ├── pve_xray_setup.sh    # PVE 宿主机：接入 VLESS Reality 节点，生成 xray 客户端配置
 ├── pve_tproxy_setup.sh  # PVE 宿主机：升级为透明代理（tproxy + DNS 防泄漏）
 ├── PVE.md               # PVE 家庭实验室完整配置记录
@@ -23,7 +26,7 @@ VPS-ENV/
 | 场景 | 入口 | 说明 |
 |------|------|------|
 | GCP 开发工作站 | `gcp_provision.sh` | Ubuntu 24.04 一键配置 tmux / zsh / Docker / mise 等环境 |
-| VPS 节点服务端部署 | `VPS-VLESS.md` | 在新 VPS 上部署 VLESS Reality 服务端节点 |
+| VPS 节点服务端部署 | `setup.sh vps-vless` | 自动安装 VLESS Reality 服务端并生成分享链接 |
 | PVE 基础代理接入 | `pve_xray_setup.sh` | 读取 VLESS Reality 分享链接，生成 `/etc/xray/config.json` |
 | PVE 透明代理 | `pve_tproxy_setup.sh` | 为 PVE 宿主机与 LXC 流量启用 tproxy + DNS 防泄漏 |
 | PVE 实操记录 | `PVE.md` | 记录网络拓扑、LXC 约定、服务管理方法 |
@@ -31,6 +34,38 @@ VPS-ENV/
 | 命令与工具 | `COMMANDS.md` / `TOOLS.md` | 日常运维命令与工具教程 |
 
 ## 快速开始
+
+### OpenCode / 自动化入口
+
+如果你的目标是：
+
+1. 新服务器先安装好 OpenCode
+2. `git clone` 这个仓库
+3. 然后让 OpenCode 尽量少猜、直接执行安装
+
+那么优先使用统一入口：
+
+```bash
+# 新 VPS：安装 VLESS Reality 服务端
+bash setup.sh vps-vless
+
+# PVE 宿主机：接入一个现成的 VLESS Reality 节点
+VLESS_LINK='vless://...' bash setup.sh pve-xray
+
+# PVE 宿主机：升级为透明代理
+bash setup.sh pve-tproxy
+
+# GCP Ubuntu 工作站
+bash setup.sh gcp
+```
+
+相比只给一个配置模板，这种做法的优势是：
+
+- OpenCode 有明确脚本入口可执行
+- 敏感值可以由脚本自动生成或通过环境变量注入
+- 最终状态会落成真实系统配置，而不是停留在“待你手工套模板”
+
+如果你希望 agent 在 clone 仓库后先理解入口和边界，可以先读 [`AGENTS.md`](./AGENTS.md)。
 
 ### GCP Ubuntu 工作站
 
@@ -64,19 +99,25 @@ GCP 脚本会安装以下常用组件：
 ### PVE 宿主机接入 VLESS Reality 节点
 
 ```bash
-# 1. 在新 VPS 上部署一个可用的 VLESS Reality 服务端（见 VPS-VLESS.md）
+# 1. 在新 VPS 上部署一个可用的 VLESS Reality 服务端
+bash setup.sh vps-vless
+
+# 2. 记下脚本输出的分享链接，或读取 /root/.vps-env/vless-share-link.txt
+
 # 2. 在 PVE 宿主机安装 xray 二进制（见 PVE-VLESS.md）
 
 # 3. 生成基础 xray 客户端配置
-bash pve_xray_setup.sh
+VLESS_LINK='vless://...' bash setup.sh pve-xray
 
 # 4. 如需让宿主机 / LXC 全流量走代理，再执行
-bash pve_tproxy_setup.sh
+bash setup.sh pve-tproxy
 ```
 
 ## 文档索引
 
 - [VPS-VLESS.md](./VPS-VLESS.md)：新 VPS 上部署 VLESS Reality 服务端节点
+- [vps_vless_setup.sh](./vps_vless_setup.sh)：新 VPS 上的可执行安装脚本
+- [AGENTS.md](./AGENTS.md)：OpenCode / agent 执行入口与约束说明
 - [PVE.md](./PVE.md)：PVE 家庭实验室的硬件、网络与服务布局说明
 - [PVE-VLESS.md](./PVE-VLESS.md)：VLESS Reality 节点要求、接入步骤与排障建议
 - [COMMANDS.md](./COMMANDS.md)：常用命令速查

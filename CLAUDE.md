@@ -6,9 +6,12 @@
 
 ```
 VPS-ENV/
+├── AGENTS.md             # OpenCode / agent 执行入口与约束说明
+├── setup.sh              # 统一入口：按场景分发到对应安装脚本
 ├── gcp_provision.sh      # GCP Ubuntu 工作站一键配置（tmux/zsh/docker/mise 等）
 ├── proxy_toggle.sh       # 代理切换工具（source 后使用 proxy on/off/status）
 ├── VPS-VLESS.md          # 新 VPS 部署 VLESS Reality 服务端指南
+├── vps_vless_setup.sh    # 新 VPS：自动安装 VLESS Reality 服务端并输出分享链接
 ├── pve_xray_setup.sh     # PVE 宿主机：接入 VLESS Reality 节点，生成 xray 客户端配置
 ├── pve_tproxy_setup.sh   # PVE 宿主机：升级为透明代理（tproxy + DNS 防泄漏）
 ├── PVE.md                # PVE 家庭实验室完整配置记录

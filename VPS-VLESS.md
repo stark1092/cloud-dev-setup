@@ -6,6 +6,29 @@
 2. 导出可供客户端 / `pve_xray_setup.sh` 使用的分享链接
 3. 保留对后续维护真正有帮助的检查项和排障思路
 
+如果你的目标是让 **OpenCode 在 fresh server 上直接接管安装**，优先跑：
+
+```bash
+bash setup.sh vps-vless
+```
+
+这会直接执行 [`vps_vless_setup.sh`](./vps_vless_setup.sh)，自动完成：
+
+- 基础依赖安装
+- BBR 配置（默认开启，可用 `ENABLE_BBR=0` 关闭）
+- xray 安装
+- Reality 服务端配置生成
+- `xray.service` 启动
+- 分享链接输出与落盘
+
+如果 GitHub 下载不通，也可以预先放好本地 xray 二进制，再执行：
+
+```bash
+XRAY_LOCAL_BINARY=/root/xray bash setup.sh vps-vless
+```
+
+也就是说：对于 AI agent，**脚本入口比模板更有价值**；模板更适合人工对照修改，脚本更适合直接执行。
+
 它适合收纳到本仓库，因为这本来就是一份 **VPS / PVE 环境配置集合**。
 `PVE-VLESS.md` 负责“PVE 如何消费一个已有节点”，而本文负责“如何先把这个节点建出来”。
 
@@ -24,6 +47,19 @@
 - 面板自动化备份 / 多用户限速 / 商业化运营
 - 将敏感配置直接提交进仓库
 - 所有客户端的细枝末节适配
+
+如果你不想让脚本自动生成默认值，也可以通过环境变量覆盖：
+
+```bash
+SERVER_ADDRESS=1.2.3.4 \
+VLESS_PORT=443 \
+REALITY_DEST=www.microsoft.com:443 \
+REALITY_SERVER_NAME=www.microsoft.com \
+VLESS_UUID='11111111-1111-1111-1111-111111111111' \
+VLESS_SHORT_ID='aabbccdd' \
+NODE_REMARK='my-vps-node' \
+bash setup.sh vps-vless
+```
 
 如果你后续要让 PVE 宿主机消费这个节点，请继续看 [`PVE-VLESS.md`](./PVE-VLESS.md)。
 
@@ -50,6 +86,8 @@
 ---
 
 ## 初始系统准备
+
+如果你采用脚本入口，上面的系统准备会由 `vps_vless_setup.sh` 直接完成；本节主要用于解释脚本背后的步骤与默认值。
 
 ### 1. 更新系统并安装基础工具
 
