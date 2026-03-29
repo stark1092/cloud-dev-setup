@@ -35,15 +35,23 @@ VPS-ENV/
 
 ## 快速开始
 
-### OpenCode / 自动化入口
+### OpenCode / 交互式入口
 
 如果你的目标是：
 
 1. 新服务器先安装好 OpenCode
 2. `git clone` 这个仓库
-3. 然后让 OpenCode 尽量少猜、直接执行安装
+3. 然后让 OpenCode 基于你的选择开始部署与调试
 
-那么优先使用统一入口：
+推荐流程不是“让 agent 自动判断机器角色”，而是：
+
+1. 先让 OpenCode 读 [`AGENTS.md`](./AGENTS.md)
+2. 你明确告诉它这台机器的角色（GCP / VPS VLESS / PVE xray / PVE tproxy）
+3. 再由它决定直接调用底层脚本，或使用 `setup.sh` 这个便捷分发器
+
+也就是说，`AGENTS.md` 是 **OpenCode 的主入口说明**，`setup.sh` 是 **可选命令助手**。
+
+当角色已经明确时，可以用 `setup.sh` 快速执行：
 
 ```bash
 # 新 VPS：安装 VLESS Reality 服务端
@@ -61,11 +69,11 @@ bash setup.sh gcp
 
 相比只给一个配置模板，这种做法的优势是：
 
-- OpenCode 有明确脚本入口可执行
+- OpenCode 有明确文档入口和可执行脚本入口
 - 敏感值可以由脚本自动生成或通过环境变量注入
 - 最终状态会落成真实系统配置，而不是停留在“待你手工套模板”
 
-如果你希望 agent 在 clone 仓库后先理解入口和边界，可以先读 [`AGENTS.md`](./AGENTS.md)。
+如果你是通过 OpenCode 交互式推进，优先让它先读 [`AGENTS.md`](./AGENTS.md)。
 
 ### GCP Ubuntu 工作站
 

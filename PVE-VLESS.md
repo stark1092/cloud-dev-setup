@@ -10,6 +10,12 @@
 - [`VPS-VLESS.md`](./VPS-VLESS.md)：新 VPS 上如何部署服务端节点
 - 本文档：PVE 宿主机如何消费这个节点
 
+如果你是通过 OpenCode / agent 交互式推进，推荐顺序是：
+
+1. 先让它阅读 [`AGENTS.md`](./AGENTS.md)
+2. 明确告诉它当前机器角色是 `pve-xray` 或 `pve-tproxy`
+3. 再由它调用底层脚本，或用 `setup.sh` 作为可选命令分发器
+
 ---
 
 ## 适用范围
@@ -20,6 +26,8 @@
 2. 你希望让 **PVE 宿主机** 先连上它
 3. 然后再用 `pve_tproxy_setup.sh` 把 **宿主机 + LXC** 的流量统一导入透明代理
 
+也就是说：这份文档默认讨论的是 **PVE 消费端角色**，不是服务端节点角色。
+
 本仓库脚本**不负责**：
 
 - 自动部署远端 VLESS 服务器（手工部署文档见 [`VPS-VLESS.md`](./VPS-VLESS.md)）
@@ -29,6 +37,14 @@
 如果你使用的是 3X-UI、x-ui 或其他控制面板，也没问题；只要最终能提供一条**完整的 VLESS Reality 分享链接**，本仓库就能消费。
 
 如果你还没有把服务端节点建出来，请先看 [`VPS-VLESS.md`](./VPS-VLESS.md)。
+
+如果你已经明确当前场景是 `pve-xray`，可以直接运行：
+
+```bash
+VLESS_LINK='vless://...' bash setup.sh pve-xray
+```
+
+但对 OpenCode 来说，更推荐的思路仍然是：先明确角色，再执行命令。
 
 ---
 

@@ -30,6 +30,8 @@ apt update && apt dist-upgrade -y
 
 如果你还没有可用的 VLESS Reality 服务端节点，先看 [`VPS-VLESS.md`](./VPS-VLESS.md)。
 
+如果你通过 OpenCode / agent 操作这台机器，先让它阅读 [`AGENTS.md`](./AGENTS.md)，并明确告诉它当前角色是 `pve-xray` 或 `pve-tproxy`。
+
 1. `pve_xray_setup.sh`
    - 粘贴完整的 VLESS Reality 分享链接
    - 生成 `/etc/xray/config.json`

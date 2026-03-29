@@ -37,6 +37,7 @@ VPS-ENV/
 
 ## 注意事项
 
+- OpenCode / agent 使用时，优先阅读 `AGENTS.md`；`setup.sh` 只是场景明确后的可选命令分发器
 - xray 配置文件位于 `/etc/xray/config.json`，含敏感信息，不提交到仓库
 - iptables 白名单在 `/etc/xray/iptables.sh` 的 `WHITELIST_IPS` 数组中维护
 - LXC 容器通过 SSH 跳板访问：`ssh -J root@<PVE_IP> root@10.10.10.x`

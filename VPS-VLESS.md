@@ -6,7 +6,13 @@
 2. 导出可供客户端 / `pve_xray_setup.sh` 使用的分享链接
 3. 保留对后续维护真正有帮助的检查项和排障思路
 
-如果你的目标是让 **OpenCode 在 fresh server 上直接接管安装**，优先跑：
+如果你的目标是让 **OpenCode 在 fresh server 上接管安装**，更合理的流程是：
+
+1. 先让它阅读 [`AGENTS.md`](./AGENTS.md)
+2. 你明确告诉它当前机器就是 `vps-vless` 角色
+3. 再由它选择调用 `bash setup.sh vps-vless` 或直接调用脚本
+
+如果你已经明确要走 VPS 服务端路径，那么最方便的命令是：
 
 ```bash
 bash setup.sh vps-vless
@@ -27,7 +33,7 @@ bash setup.sh vps-vless
 XRAY_LOCAL_BINARY=/root/xray bash setup.sh vps-vless
 ```
 
-也就是说：对于 AI agent，**脚本入口比模板更有价值**；模板更适合人工对照修改，脚本更适合直接执行。
+也就是说：对于 AI agent，**AGENTS.md + 脚本入口** 比模板更有价值；模板更适合人工对照修改，而 agent 更适合在明确角色后直接执行脚本。
 
 它适合收纳到本仓库，因为这本来就是一份 **VPS / PVE 环境配置集合**。
 `PVE-VLESS.md` 负责“PVE 如何消费一个已有节点”，而本文负责“如何先把这个节点建出来”。

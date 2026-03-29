@@ -2,9 +2,19 @@
 
 This repository is intended to be executable by an AI coding agent after cloning onto a fresh server.
 
-## Preferred entrypoint
+## How OpenCode should start
 
-Use `setup.sh` first.
+Use this file as the primary entry document.
+
+Recommended interaction model:
+
+1. Ask the human which role this machine should take: `gcp`, `vps-vless`, `pve-xray`, or `pve-tproxy`
+2. Read the matching docs before making changes
+3. Use `setup.sh` only as a convenience dispatcher after the role is already clear
+
+So `setup.sh` is **optional helper tooling**, not the only valid entrypoint.
+
+## Optional command dispatcher
 
 ```bash
 bash setup.sh gcp
@@ -21,6 +31,8 @@ bash setup.sh pve-tproxy
 | VPS VLESS server | `bash setup.sh vps-vless` | Install xray Reality server and print share link |
 | PVE xray client | `VLESS_LINK='vless://...' bash setup.sh pve-xray` | Generate `/etc/xray/config.json` from a share link |
 | PVE tproxy | `bash setup.sh pve-tproxy` | Upgrade PVE host into transparent proxy mode |
+
+Direct script usage is also valid when the role is already explicit.
 
 ## Important inputs
 
