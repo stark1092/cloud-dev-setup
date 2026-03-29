@@ -39,8 +39,10 @@ die() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 STATE_DIR="/root/.vps-env"
 STATE_FILE="$STATE_DIR/vps-vless.env"
 SHARE_FILE="$STATE_DIR/vless-share-link.txt"
-XRAY_CONFIG_PATH="/etc/xray/config.json"
+XRAY_CONFIG_PATH="/usr/local/etc/xray/config.json"
 XRAY_SERVICE_PATH="/etc/systemd/system/xray.service"
+XRAY_SERVICE_OVERRIDE_DIR="/etc/systemd/system/xray.service.d"
+XRAY_SERVICE_OVERRIDE_PATH="$XRAY_SERVICE_OVERRIDE_DIR/99-config-path.conf"
 
 require_root() {
     [[ ${EUID:-$(id -u)} -eq 0 ]] || die "请以 root 身份运行此脚本"
@@ -171,8 +173,8 @@ generate_keys() {
     info "生成 Reality 密钥对"
     local key_output
     key_output="$(xray x25519)"
-    REALITY_PRIVATE_KEY="$(printf '%s\n' "$key_output" | awk -F': ' '/Private key:/ {print $2}')"
-    REALITY_PUBLIC_KEY="$(printf '%s\n' "$key_output" | awk -F': ' '/Public key:/ {print $2}')"
+    REALITY_PRIVATE_KEY="$(printf '%s\n' "$key_output" | awk -F': ' '/^Private key:/ || /^PrivateKey:/ {print $2; exit}')"
+    REALITY_PUBLIC_KEY="$(printf '%s\n' "$key_output" | awk -F': ' '/^Public key:/ || /^PublicKey:/ || /^Password \(PublicKey\):/ {print $2; exit}')"
     [[ -n "$REALITY_PRIVATE_KEY" && -n "$REALITY_PUBLIC_KEY" ]] || die "生成 Reality 密钥对失败"
     success "Reality 密钥对生成完成"
 }
@@ -198,7 +200,7 @@ write_xray_config() {
         cp "$XRAY_CONFIG_PATH" "$XRAY_CONFIG_PATH.bak.$(date +%Y%m%d%H%M%S)"
     fi
 
-    mkdir -p /etc/xray
+    mkdir -p "$(dirname "$XRAY_CONFIG_PATH")"
     cat > "$XRAY_CONFIG_PATH" <<EOF
 {
   "log": {
@@ -262,14 +264,37 @@ EOF
     success "已写入 $XRAY_CONFIG_PATH"
 }
 
+write_systemd_execstart_override() {
+    install -d "$XRAY_SERVICE_OVERRIDE_DIR"
+    cat > "$XRAY_SERVICE_OVERRIDE_PATH" <<EOF
+[Service]
+ExecStart=
+ExecStart=/usr/local/bin/xray run -config ${XRAY_CONFIG_PATH}
+EOF
+    success "已写入 $XRAY_SERVICE_OVERRIDE_PATH"
+}
+
 write_systemd_service() {
-    cat > "$XRAY_SERVICE_PATH" <<'EOF'
+    if systemctl cat xray >/dev/null 2>&1; then
+        if ! systemctl show xray --property=ExecStart --value | grep -Fq -- "$XRAY_CONFIG_PATH"; then
+            warn "检测到现有 xray 服务未指向 $XRAY_CONFIG_PATH，写入 ExecStart 覆盖"
+            write_systemd_execstart_override
+        fi
+
+        systemctl daemon-reload
+        systemctl enable xray >/dev/null
+        systemctl restart xray
+        success "xray 服务已启动"
+        return 0
+    fi
+
+    cat > "$XRAY_SERVICE_PATH" <<EOF
 [Unit]
 Description=Xray Service
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/xray run -config /etc/xray/config.json
+ExecStart=/usr/local/bin/xray run -config ${XRAY_CONFIG_PATH}
 Restart=on-failure
 RestartSec=5
 
@@ -322,10 +347,17 @@ EOF
 }
 
 verify_setup() {
+    local execstart
+
     systemctl is-active --quiet xray || {
         journalctl -u xray -n 50 >&2
         die "xray 服务未正常运行"
     }
+
+    execstart="$(systemctl show xray --property=ExecStart --value 2>/dev/null || true)"
+    if [[ "$execstart" != *"$XRAY_CONFIG_PATH"* ]]; then
+        warn "xray 实际启动路径未指向预期配置: $XRAY_CONFIG_PATH"
+    fi
 
     if ! ss -tuln | grep -q ":${VLESS_PORT} "; then
         warn "未在 ss 输出中检测到 :${VLESS_PORT} 监听，请手动复核"
@@ -342,6 +374,7 @@ print_summary() {
     printf 'UUID:       %s\n' "$VLESS_UUID"
     printf 'Short ID:   %s\n' "$VLESS_SHORT_ID"
     printf 'Public Key: %s\n' "$REALITY_PUBLIC_KEY"
+    printf '配置文件:   %s\n' "$XRAY_CONFIG_PATH"
     printf '\n分享链接:\n%s\n' "$VLESS_SHARE_LINK"
     printf '\n状态文件: %s\n' "$STATE_FILE"
     printf '分享链接文件: %s\n' "$SHARE_FILE"

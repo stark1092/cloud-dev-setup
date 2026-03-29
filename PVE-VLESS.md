@@ -111,7 +111,7 @@ lsmod | grep bbr
 | `sni` / `serverName` | 必需 | Reality 握手域名 |
 | `pbk` / `publicKey` | 必需 | Reality 公钥 |
 | `flow=xtls-rprx-vision` | 必需 | 当前仓库固定为 Vision |
-| `sid` / `shortId` | 可选 | 若服务端允许空 shortId，则可为空 |
+| `sid` / `shortId` | 可选 | 若服务端允许空 shortId，则可为空；非空时建议 8 或 16 位十六进制 |
 | `fp` / `fingerprint` / `client-fingerprint` | 可选 | 默认按 `chrome` 处理 |
 
 ### 参考格式
@@ -127,6 +127,14 @@ vless://<UUID>@<SERVER_HOST>:443?security=reality&type=tcp&sni=www.microsoft.com
 - 如果缺少 `sni` 或 `pbk/publicKey`，脚本会直接报错
 - 如果 `flow` 不是 `xtls-rprx-vision`，脚本会直接报错
 - `shortId` 可以为空；`fingerprint` 缺失时默认使用 `chrome`
+
+### 新版面板 / 官方文档兼容提示
+
+- 较新的官方 JSON 文档可能把客户端侧 `publicKey` 写成 `password`；而面板和分享链接仍常见 `pbk` / `publicKey`。对当前仓库来说，它们本质上指向同一个客户端要持有的 Reality 值
+- 最新官方文档里配置文件可能把 TCP 传输写成 `network: "raw"`；但当前仓库在分享链接层仍按 `type=tcp` 解析和生成，不要手工改成 `type=raw`
+- 如果分享链接里带了 `spx` / `spiderX`、`alpn`、`allowInsecure` 等额外参数，`pve_xray_setup.sh` 当前会忽略它们，只抓取生成最小可用配置所需的字段
+- 如果 `shortId` 非空，尽量保证它是偶数长度十六进制；推荐 8 位或 16 位。奇数长度值往往不会在脚本解析阶段暴露，而会在 `xray.service` 启动或握手时失败
+- 如果面板导出的 `flow` 不是 `xtls-rprx-vision`（例如 `xtls-rprx-vision-udp443`），当前脚本会拒绝；这是仓库当前的兼容边界，不是链接“看起来像 Reality”就一定能直接消费
 
 这样做是为了避免脚本静默降级成错误配置。
 

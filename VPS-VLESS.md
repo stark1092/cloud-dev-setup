@@ -135,7 +135,7 @@ lsmod | grep bbr
 | `UUID` | 客户端身份 ID | 每个节点 / 用户至少一组 |
 | `privateKey` | Reality 服务端私钥 | 只留在服务端，绝不进仓库 |
 | `publicKey` | 客户端要使用的公钥 | 需要出现在分享链接里 |
-| `shortId` | Reality 辅助标识 | 可为空，也可用简短十六进制 |
+| `shortId` | Reality 辅助标识 | 可为空；非空时建议 8 或 16 位十六进制 |
 | `serverName` / `SNI` | 握手域名 | 需与 `dest` 逻辑一致 |
 | `dest` | Reality 目标站点 | 常见写法如 `www.microsoft.com:443` |
 
@@ -227,7 +227,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.
 | Fingerprint | `chrome` | 与当前客户端兼容性最好 |
 | Dest | 类似 `www.microsoft.com:443` | 用作外观伪装 |
 | SNI | 例如 `www.microsoft.com` | 握手域名，应和目标一致 |
-| Short ID | 8~16 位十六进制或留空 | 与客户端保持一致 |
+| Short ID | 建议 8 或 16 位十六进制，或留空 | 与客户端保持一致 |
 
 面板里如果还有这些概念，也要保持一致：
 
@@ -284,6 +284,40 @@ PDF 提到在 `realitySettings` 里手工插入：
 - 如果个别客户端握手失败，优先排查客户端版本、指纹、Reality 字段是否完整
 - 不要把某个版本问题当成永久结论写死在仓库里
 
+### 5. 新版官方文档里的字段名变化，不代表当前仓库要立刻跟着改
+
+- 服务端 `realitySettings.dest` 在较新的官方文档里常写成 `target`，当前仍是别名关系
+- 客户端同一个值，在分享链接里常见 `pbk` / `publicKey`，在较新的 JSON 文档里可能写成 `password`
+- `xray x25519` 的输出标题也可能变化；只要能区分“服务端私钥”和“客户端要持有的对应值”即可
+
+### 6. `shortId` 建议使用偶数长度十六进制
+
+- 非空 `shortId` 不要随手写任意长度
+- 当前更稳妥的做法是使用 8 位或 16 位十六进制
+- 奇数长度值经常要到 `xray` 启动或握手时才暴露问题，排障成本高于一开始就规范
+
+### 7. 先用 `xray tls ping` 验证 `REALITY_DEST` / `SNI`
+
+```bash
+xray tls ping www.microsoft.com:443
+```
+
+- 先确认目标站点能正常返回证书，且你准备使用的 `SNI` 确实属于返回证书的 SAN
+- 不要把“某个能访问的 HTTPS 站点”和“另一个不相关域名”硬拼成一组 `dest + SNI`
+- 如果目标站点经常变动、返回证书不稳定，后续 Reality 排障会明显更麻烦
+
+### 8. 当前仓库先不要混入新版 `vlessenc` / ML-KEM / ML-DSA 配置
+
+- 本仓库脚本当前仍以 `decryption: "none"` / `encryption: "none"` 为基线
+- 新版官方文档里出现的 `xray vlessenc`、`mlkem768x25519plus`、`mldsa65` 等能力，不是“只改一边就能增量启用”的小选项
+- 如果没有同步升级服务端和客户端脚本，不要把这些新字段手工塞进当前 JSON 模板
+
+### 9. `REALITY_DEST` 尽量不要默认指向通用免费 CDN 前门
+
+- Reality 会把未通过校验的流量直接转发到 `dest/target`
+- 如果目标站点选得太随意，尤其是通用 CDN 前门，扫描流量可能把你的 VPS 变成意外的转发点
+- 对个人节点来说，更稳妥的是优先选择证书稳定、TLS 行为稳定、可重复验证的目标站点
+
 ---
 
 ## 最低限度的服务端运维检查
@@ -316,6 +350,17 @@ journalctl -u xray -n 50
 ```
 
 如果你使用的是面板方案，也可以同时检查面板服务是否正常。
+
+### 4. 确认 xray 实际读取的是哪份配置
+
+```bash
+systemctl show xray --property=ExecStart --value
+systemctl cat xray
+```
+
+- 官方安装器默认常见路径是 `/usr/local/etc/xray/config.json`
+- 不要只盯着 `/etc/systemd/system/xray.service` 这一份文件；`xray.service.d/*.conf` drop-in 可能会覆盖 `ExecStart`
+- 如果你明明重写了配置，但服务行为像没变，优先检查实际 `ExecStart` 和 `/etc/systemd/system/xray.service.d/`
 
 ---
 
