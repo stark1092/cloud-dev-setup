@@ -1,0 +1,18 @@
+# Copy to /etc/dashboard/server.toml
+[server]
+bind          = "100.64.0.1"        # tailscale0 IP
+port          = 8787
+tls_certfile  = "/etc/dashboard/tls/cert.pem"
+tls_keyfile   = "/etc/dashboard/tls/key.pem"
+
+[storage]
+db_path       = "/var/lib/dashboard/dashboard.db"
+retain_days   = 90
+
+[ingest]
+body_max_bytes        = 65536
+rate_limit_per_minute = 60
+
+[read]
+require_token   = false
+read_token_hash = ""

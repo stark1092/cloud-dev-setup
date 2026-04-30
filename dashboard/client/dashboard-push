@@ -1,0 +1,218 @@
+#!/usr/bin/env python3
+"""dashboard-push: minimal stdlib client for the home lab dashboard.
+
+Usage:
+  dashboard-push <kind> [--title T] [--body T | --body-file P] [--severity ...]
+                        [--dedup-key K] [--meta JSON] [--collect-host]
+                        [--client-ts RFC3339] [--dry-run]
+
+Reads SOURCE_ID, SOURCE_TOKEN, SERVER_URL from /etc/dashboard-client.env
+(override with $DASHBOARD_CLIENT_ENV).
+"""
+import argparse
+import json
+import os
+import socket
+import ssl
+import sys
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+KINDS = ("briefing", "status", "alert", "link")
+SEVERITIES = ("info", "warn", "error")
+
+DEFAULT_ENV_PATH = "/etc/dashboard-client.env"
+DEFAULT_SPOOL_PATH = "/var/lib/dashboard-client/spool.jsonl"
+DEFAULT_TIMEOUT_S = 5.0
+DEFAULT_SPOOL_MAX = 200
+
+
+def _utcnow_iso() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def load_env(path: str) -> dict[str, str]:
+    env: dict[str, str] = {}
+    p = Path(path)
+    if not p.exists():
+        sys.exit(f"config file missing: {path}")
+    for raw in p.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        env[k.strip()] = v.strip().strip('"').strip("'")
+    for k in ("SOURCE_ID", "SOURCE_TOKEN", "SERVER_URL"):
+        if k not in env:
+            sys.exit(f"missing {k} in {path}")
+    return env
+
+
+def collect_host_metrics() -> dict:
+    import shutil
+
+    with open("/proc/uptime") as f:
+        uptime_s = float(f.read().split()[0])
+    with open("/proc/loadavg") as f:
+        load_1 = float(f.read().split()[0])
+    mi: dict[str, str] = {}
+    with open("/proc/meminfo") as f:
+        for line in f:
+            if ":" in line:
+                k, v = line.split(":", 1)
+                mi[k.strip()] = v.strip()
+    total = int(mi["MemTotal"].split()[0])
+    avail = int(mi["MemAvailable"].split()[0])
+    mem_used_pct = round((total - avail) / total * 100, 1)
+    du = shutil.disk_usage("/")
+    disk_root_pct = round(du.used / du.total * 100, 1)
+    return {
+        "uptime_s": int(uptime_s),
+        "load_1": load_1,
+        "mem_used_pct": mem_used_pct,
+        "disk_root_pct": disk_root_pct,
+        "metrics_ts": _utcnow_iso(),
+    }
+
+
+def post(env: dict[str, str], payload: dict, timeout: float) -> tuple[int, bytes]:
+    req = urllib.request.Request(
+        env["SERVER_URL"].rstrip("/") + "/api/v1/ingest",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "X-Source-Id": env["SOURCE_ID"],
+            "X-Source-Token": env["SOURCE_TOKEN"],
+        },
+        method="POST",
+    )
+    cafile = env.get("TLS_CA_BUNDLE") or None
+    ctx = ssl.create_default_context(cafile=cafile)
+    with urllib.request.urlopen(req, timeout=timeout, context=ctx) as r:
+        return r.status, r.read()
+
+
+def append_spool(env: dict[str, str], payload: dict) -> None:
+    spool = Path(env.get("SPOOL_PATH", DEFAULT_SPOOL_PATH))
+    spool.parent.mkdir(parents=True, exist_ok=True)
+    queued = {**payload, "__queued_at": _utcnow_iso()}
+    cap = int(env.get("SPOOL_MAX", DEFAULT_SPOOL_MAX))
+    existing: list[str] = []
+    if spool.exists() and spool.stat().st_size > 0:
+        existing = spool.read_text().splitlines()
+    existing.append(json.dumps(queued, ensure_ascii=False))
+    existing = existing[-cap:]
+    spool.write_text("\n".join(existing) + "\n")
+
+
+def flush_spool(env: dict[str, str], timeout: float) -> None:
+    spool = Path(env.get("SPOOL_PATH", DEFAULT_SPOOL_PATH))
+    if not spool.exists() or spool.stat().st_size == 0:
+        return
+    try:
+        for line in spool.read_text().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            obj = json.loads(line)
+            obj.pop("__queued_at", None)
+            post(env, obj, timeout)
+        spool.write_text("")
+    except Exception:
+        # Leave the spool in place for the next invocation.
+        pass
+
+
+def build_payload(args: argparse.Namespace) -> dict:
+    if args.body_file:
+        body = Path(args.body_file).read_text()
+    elif args.body is not None:
+        body = args.body
+    else:
+        body = sys.stdin.read()
+    body = body.rstrip("\n")
+    if not body:
+        sys.exit("body is empty (provide --body, --body-file, or stdin)")
+
+    payload: dict = {"kind": args.kind, "body": body}
+    if args.title:
+        payload["title"] = args.title
+    if args.severity:
+        payload["severity"] = args.severity
+    if args.dedup_key:
+        payload["dedup_key"] = args.dedup_key
+    if args.client_ts:
+        payload["client_ts"] = args.client_ts
+    else:
+        payload["client_ts"] = _utcnow_iso()
+
+    meta: dict = {}
+    if args.meta:
+        meta = json.loads(args.meta)
+        if not isinstance(meta, dict):
+            sys.exit("--meta must be a JSON object")
+    if args.collect_host:
+        if args.kind != "status":
+            sys.exit("--collect-host requires kind=status")
+        meta.update(collect_host_metrics())
+    if meta:
+        payload["meta"] = meta
+    return payload
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(prog="dashboard-push")
+    ap.add_argument("kind", choices=KINDS)
+    ap.add_argument("--title")
+    ap.add_argument("--body")
+    ap.add_argument("--body-file")
+    ap.add_argument("--severity", choices=SEVERITIES)
+    ap.add_argument("--dedup-key")
+    ap.add_argument("--meta", help="JSON object")
+    ap.add_argument("--collect-host", action="store_true")
+    ap.add_argument("--client-ts")
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args(argv)
+
+    env_path = os.environ.get("DASHBOARD_CLIENT_ENV", DEFAULT_ENV_PATH)
+    env = load_env(env_path)
+    timeout = float(env.get("TIMEOUT_S", DEFAULT_TIMEOUT_S))
+
+    try:
+        payload = build_payload(args)
+    except SystemExit:
+        raise
+    except Exception as e:
+        sys.stderr.write(f"input error: {e}\n")
+        return 3
+
+    if args.dry_run:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+
+    flush_spool(env, timeout)
+
+    try:
+        post(env, payload, timeout)
+        return 0
+    except urllib.error.HTTPError as e:
+        if 400 <= e.code < 500:
+            try:
+                detail = e.read().decode(errors="replace")
+            except Exception:
+                detail = ""
+            sys.stderr.write(f"contract error {e.code}: {detail}\n")
+            return 3
+        append_spool(env, payload)
+        sys.stderr.write(f"server error {e.code}; spooled\n")
+        return 2
+    except (urllib.error.URLError, socket.timeout, OSError) as e:
+        append_spool(env, payload)
+        sys.stderr.write(f"network error: {e}; spooled\n")
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

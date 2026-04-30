@@ -1,0 +1,13 @@
+# Copy to /etc/dashboard/nodes.toml
+# Used by the S2 ping loop (not yet implemented).
+
+[nodes.pve-homelab]
+label          = "PVE Home Host"
+tailscale_name = "pve-homelab"
+method         = "icmp"
+
+[nodes.gcp-ai-workstation]
+label          = "GCP AI Workstation"
+tailscale_name = "gcp-ai-workstation"
+method         = "tcp"
+tcp_port       = 22

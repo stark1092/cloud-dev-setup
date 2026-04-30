@@ -1,0 +1,11 @@
+# Copy to /etc/dashboard/sources.toml
+# token_hash = sha256(plaintext token); generate with:
+#   TOKEN=$(openssl rand -hex 32); printf %s "$TOKEN" | sha256sum
+
+[sources.gcp-ai-workstation]
+display_name = "GCP AI Workstation"
+token_hash   = "REPLACE_ME"
+
+[sources.vps-hk-01]
+display_name = "Hong Kong VPS"
+token_hash   = "REPLACE_ME"
