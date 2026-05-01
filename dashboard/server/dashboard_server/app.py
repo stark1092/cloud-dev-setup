@@ -1,4 +1,8 @@
+import asyncio
+import logging
+import signal
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
@@ -11,10 +15,59 @@ from .db import connect, init_schema
 from .feed import router as feed_router
 from .health import router as health_router
 from .ingest import router as ingest_router
+from .liveness import default_probe, liveness_loop
+from .nodes import router as nodes_router
+from .reload import reload_config
+from .retention import retention_loop
+
+logger = logging.getLogger("dashboard.app")
 
 
 def create_app(config: Config) -> FastAPI:
-    app = FastAPI(title="dashboard-server", version="0.1.0", docs_url=None, redoc_url=None)
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        tasks: list[asyncio.Task] = []
+        if app.state.config.enable_background_tasks:
+            tasks.append(asyncio.create_task(
+                liveness_loop(app, app.state.config.liveness_interval_s),
+                name="liveness_loop",
+            ))
+            tasks.append(asyncio.create_task(
+                retention_loop(app, app.state.config.retention_interval_s),
+                name="retention_loop",
+            ))
+
+        try:
+            loop = asyncio.get_running_loop()
+            loop.add_signal_handler(signal.SIGHUP, lambda: reload_config(app.state.config))
+            sighup_installed = True
+        except (NotImplementedError, RuntimeError, ValueError):
+            sighup_installed = False
+        if sighup_installed:
+            logger.info("SIGHUP handler installed (reload sources/nodes)")
+
+        try:
+            yield
+        finally:
+            for t in tasks:
+                t.cancel()
+            for t in tasks:
+                try:
+                    await t
+                except (asyncio.CancelledError, Exception):
+                    pass
+            try:
+                app.state.db.close()
+            except Exception:
+                pass
+
+    app = FastAPI(
+        title="dashboard-server",
+        version="0.1.0",
+        docs_url=None,
+        redoc_url=None,
+        lifespan=lifespan,
+    )
 
     conn = connect(config.db_path)
     init_schema(conn)
@@ -23,9 +76,11 @@ def create_app(config: Config) -> FastAPI:
     app.state.db = conn
     app.state.started_at = time.monotonic()
     app.state.rate_buckets = {}
+    app.state.probe_fn = default_probe
 
     app.include_router(ingest_router)
     app.include_router(feed_router)
+    app.include_router(nodes_router)
     app.include_router(health_router)
 
     @app.exception_handler(StarletteHTTPException)

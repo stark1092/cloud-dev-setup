@@ -29,3 +29,8 @@ CREATE TABLE IF NOT EXISTS node_status (
   ping_ms          REAL,
   consecutive_fail INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS dashboard_meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);

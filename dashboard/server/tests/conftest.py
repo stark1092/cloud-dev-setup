@@ -23,6 +23,7 @@ def config(tmp_path) -> Config:
         retain_days=90,
         body_max_bytes=1024,
         rate_limit_per_minute=1000,
+        enable_background_tasks=False,
     )
     cfg.sources["gcp-ai-workstation"] = SourceEntry(
         source_id="gcp-ai-workstation",

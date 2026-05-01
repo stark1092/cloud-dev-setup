@@ -1,7 +1,7 @@
 # dashboard-server
 
-S1 实现：ingest + feed + history + health。判活 ping、保留策略、TLS、PWA 静态托管
-留给 S2 / S3 / S4。
+已落地：S1（ingest + feed + history + health）+ S2（后台 ping、保留策略、
+`/api/v1/nodes`、SIGHUP 热加载）。TLS 终结、PWA 静态托管留给 S4。
 
 ## 开发
 
@@ -70,14 +70,18 @@ dashboard/server/
 ├── dashboard_server/
 │   ├── __init__.py
 │   ├── __main__.py                 # python -m dashboard_server
-│   ├── app.py                      # FastAPI 工厂
-│   ├── config.py                   # TOML 加载
+│   ├── app.py                      # FastAPI 工厂 + lifespan + SIGHUP
+│   ├── config.py                   # TOML 加载（server / sources / nodes）
 │   ├── auth.py                     # per-source token 校验
 │   ├── db.py                       # SQLite 连接 + schema 初始化
 │   ├── schema.sql                  # 见 ../SCHEMA.md
 │   ├── models.py                   # Pydantic 模型
 │   ├── ingest.py                   # POST /api/v1/ingest
 │   ├── feed.py                     # GET /api/v1/feed{,/.../history}
+│   ├── nodes.py                    # GET /api/v1/nodes
+│   ├── liveness.py                 # 后台 ping 任务（icmp / tcp）
+│   ├── retention.py                # 后台清理任务 + 月度 VACUUM
+│   ├── reload.py                   # SIGHUP 触发的配置热加载
 │   └── health.py                   # GET /api/v1/health
 └── tests/
     ├── conftest.py

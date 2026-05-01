@@ -12,6 +12,15 @@ class SourceEntry:
 
 
 @dataclass
+class NodeEntry:
+    node_id: str
+    label: str
+    tailscale_name: str
+    method: str = "icmp"        # "icmp" | "tcp"
+    tcp_port: int = 0
+
+
+@dataclass
 class Config:
     bind: str = "127.0.0.1"
     port: int = 8787
@@ -24,6 +33,13 @@ class Config:
     require_read_token: bool = False
     read_token_hash: str = ""
     sources: dict[str, SourceEntry] = field(default_factory=dict)
+    nodes: dict[str, NodeEntry] = field(default_factory=dict)
+    sources_toml_path: Path | None = None
+    nodes_toml_path: Path | None = None
+    liveness_interval_s: float = 30.0
+    liveness_probe_timeout_s: float = 2.0
+    retention_interval_s: float = 86400.0
+    enable_background_tasks: bool = True
 
 
 def hash_token(token: str) -> str:
@@ -50,7 +66,26 @@ def load_sources_toml(path: Path) -> dict[str, SourceEntry]:
     return out
 
 
-def load_config(server_toml: Path, sources_toml: Path) -> Config:
+def load_nodes_toml(path: Path) -> dict[str, NodeEntry]:
+    if not path.exists():
+        return {}
+    raw = tomllib.loads(path.read_text())
+    out: dict[str, NodeEntry] = {}
+    for node_id, entry in raw.get("nodes", {}).items():
+        method = entry.get("method", "icmp")
+        if method not in ("icmp", "tcp"):
+            raise ValueError(f"node {node_id}: invalid method {method!r}")
+        out[node_id] = NodeEntry(
+            node_id=node_id,
+            label=entry.get("label", node_id),
+            tailscale_name=entry.get("tailscale_name", node_id),
+            method=method,
+            tcp_port=int(entry.get("tcp_port", 0)),
+        )
+    return out
+
+
+def load_config(server_toml: Path, sources_toml: Path, nodes_toml: Path | None = None) -> Config:
     cfg = Config()
     raw = load_server_toml(server_toml)
     server = raw.get("server", {})
@@ -73,5 +108,9 @@ def load_config(server_toml: Path, sources_toml: Path) -> Config:
         cfg.rate_limit_per_minute = int(ingest["rate_limit_per_minute"])
     cfg.require_read_token = bool(read.get("require_token", False))
     cfg.read_token_hash = read.get("read_token_hash", "") or ""
+    cfg.sources_toml_path = sources_toml
+    cfg.nodes_toml_path = nodes_toml
     cfg.sources = load_sources_toml(sources_toml)
+    if nodes_toml is not None:
+        cfg.nodes = load_nodes_toml(nodes_toml)
     return cfg

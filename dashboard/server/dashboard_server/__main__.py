@@ -12,11 +12,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="dashboard-server")
     parser.add_argument("--server-toml", default="/etc/dashboard/server.toml")
     parser.add_argument("--sources-toml", default="/etc/dashboard/sources.toml")
+    parser.add_argument("--nodes-toml", default="/etc/dashboard/nodes.toml")
     parser.add_argument("--bind", default=None, help="override server.bind")
     parser.add_argument("--port", type=int, default=None, help="override server.port")
     args = parser.parse_args(argv)
 
-    cfg = load_config(Path(args.server_toml), Path(args.sources_toml))
+    cfg = load_config(Path(args.server_toml), Path(args.sources_toml), Path(args.nodes_toml))
     if args.bind:
         cfg.bind = args.bind
     if args.port:

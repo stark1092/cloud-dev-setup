@@ -64,6 +64,31 @@ class HistoryResponse(BaseModel):
     next_before: str | None
 
 
+class NodeMetrics(BaseModel):
+    uptime_s: int | None = None
+    load_1: float | None = None
+    mem_used_pct: float | None = None
+    disk_root_pct: float | None = None
+    metrics_ts: str | None = None
+    extra: dict[str, Any] | None = None
+
+
+class NodeItem(BaseModel):
+    node: str
+    label: str
+    tailscale_name: str
+    alive: bool
+    last_seen: str | None
+    last_check_ts: str | None
+    ping_ms: float | None
+    metrics: NodeMetrics | None = None
+
+
+class NodesResponse(BaseModel):
+    items: list[NodeItem]
+    generated_at: str
+
+
 class HealthResponse(BaseModel):
     status: str
     version: str

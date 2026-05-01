@@ -24,7 +24,7 @@
 | Session | 范围 | 状态 |
 |---------|------|------|
 | S1 | Server 骨架 + ingest + feed + history + health + 一个 Client | ✅ 已落地，14 个 smoke 测试 + e2e 跑通 |
-| S2 | 后台 ping + retention + sources/nodes 热加载 | 待启动 |
+| S2 | 后台 ping + retention + `/api/v1/nodes` + SIGHUP 热加载 | ✅ 已落地，27 个测试全绿 + e2e 跑通 |
 | S3 | PWA 前端（三块布局 + 历史瀑布流 + 30s 轮询）| 待启动 |
 | S4 | TLS（tailscale cert）+ manifest + service worker | 待启动 |
 | S5 | 集成进 `setup.sh dashboard` role | 待启动 |
